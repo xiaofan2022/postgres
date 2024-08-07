@@ -1,0 +1,436 @@
+DROP EXTENSION IF EXISTS walminer;
+NOTICE:  extension "walminer" does not exist, skipping
+CREATE EXTENSION IF NOT EXISTS walminer;
+CREATE EXTENSION IF NOT EXISTS dblink;
+DROP TABLE t1;
+ERROR:  table "t1" does not exist
+DROP TABLE t2;
+ERROR:  table "t2" does not exist
+SELECT walminer_stop();
+  walminer_stop   
+------------------
+ walminer stoped!
+(1 row)
+
+CREATE TABLE t1(i int, j int, k varchar);
+CREATE TABLE t2(i int, j int, k varchar);
+SELECT 1 FROM pg_switch_wal();
+ ?column? 
+----------
+        1
+(1 row)
+
+INSERT INTO t1 SELECT generate_series(1,10), 1, 'walminer_test_string';
+CHECKPOINT;
+-- 测试同一个事务内的多个SQL解析
+BEGIN;
+INSERT INTO t1 VALUES(1,2,'sql insert');
+DELETE FROM t1 WHERE i = 1;
+UPDATE t1 SET k = k || ' update' WHERE i = 2;
+COMMIT;
+CHECKPOINT;
+--测试子事务解析
+BEGIN;
+INSERT INTO t1 VALUES(1,3, 'test subtransaction insert');
+INSERT INTO t1 VALUES(2,3, 'test subtransaction insert');
+SAVEPOINT s1;
+INSERT INTO t1 VALUES(1,4, 'test subtransaction insert');
+INSERT INTO t1 VALUES(2,4, 'test subtransaction insert');
+UPDATE t1 SET k = k  || ' Movead' WHERE j = 4;
+SAVEPOINT s2;
+INSERT INTO t2 VALUES(1,1, 'test subtransaction insert');
+INSERT INTO t2 VALUES(2,1, 'test subtransaction insert');
+INSERT INTO t1 VALUES(1,5, 'test subtransaction insert');
+DELETE FROM t2 WHERE i = 1;
+SAVEPOINT s3;
+INSERT INTO t1 VALUES(1,6, 'test subtransaction insert');
+INSERT INTO t2 VALUES(1,2, 'test subtransaction insert');
+SAVEPOINT s4;
+DELETE FROM t1 WHERE j = 4;
+INSERT INTO t1 VALUES(1,7, 'test subtransaction insert');
+INSERT INTO t2 VALUES(1,3, 'test subtransaction insert');
+ROLLBACK TO SAVEPOINT  s4;
+SAVEPOINT s5;
+INSERT INTO t1 VALUES(1,8, 'test subtransaction insert');
+INSERT INTO t2 VALUES(1,4, 'test subtransaction insert');
+COMMIT;
+CHECKPOINT;
+--测试并行事务
+SELECT dblink_connect('dbname='|| current_database() ||' port='|| (select setting from pg_settings where name='port') ||' user=' || current_user) ;
+ dblink_connect 
+----------------
+ OK
+(1 row)
+
+BEGIN;
+INSERT INTO t1 VALUES(1,9, 'test concurrence transaction xid 1');
+INSERT INTO t2 VALUES(1,5, 'test concurrence transaction xid 1');
+SELECT dblink_exec('BEGIN');
+ dblink_exec 
+-------------
+ BEGIN
+(1 row)
+
+SELECT dblink_exec($$ INSERT INTO t1 VALUES(1, 10, 'test concurrence transaction xid 2') $$);
+ dblink_exec 
+-------------
+ INSERT 0 1
+(1 row)
+
+SELECT dblink_exec($$ INSERT INTO t2 VALUES(1, 6, 'test concurrence transaction xid 2') $$);
+ dblink_exec 
+-------------
+ INSERT 0 1
+(1 row)
+
+INSERT INTO t1 VALUES(2,9, 'test concurrence transaction xid 1');
+INSERT INTO t2 VALUES(2,5, 'test concurrence transaction xid 1');
+COMMIT;
+SELECT dblink_exec($$ INSERT INTO t1 VALUES(2, 10, 'test concurrence transaction 2') $$);
+ dblink_exec 
+-------------
+ INSERT 0 1
+(1 row)
+
+SELECT dblink_exec($$ INSERT INTO t2 VALUES(2, 6, 'test concurrence transaction 2') $$);
+ dblink_exec 
+-------------
+ INSERT 0 1
+(1 row)
+
+SELECT dblink_exec($$ COMMIT $$);
+ dblink_exec 
+-------------
+ COMMIT
+(1 row)
+
+CHECKPOINT;
+--测试muti insert
+COPY t1 (i,j,k) FROM stdin;
+COPY t2 (i,j,k) FROM stdin;
+--测试vacuum
+DELETE FROM t2 WHERE i = 2;
+INSERT INTO t2 VALUES(1,7, 'test_vacuum');
+SELECT ctid, * FROM t2 WHERE i = 1 AND j = 7;
+  ctid  | i | j |      k      
+--------+---+---+-------------
+ (0,10) | 1 | 7 | movead
+ (0,14) | 1 | 7 | test_vacuum
+(2 rows)
+
+VACUUM t2;
+INSERT INTO t2 VALUES(1, 8, 'test_vacuum');
+INSERT INTO t2 VALUES(1, 9, 'test_vacuum');
+SELECT ctid, * FROM t2 WHERE i = 1 AND j > 7;
+ ctid  | i | j |      k      
+-------+---+---+-------------
+ (0,1) | 1 | 8 | test_vacuum
+ (0,2) | 1 | 9 | test_vacuum
+(2 rows)
+
+CHECKPOINT;
+SELECT setting  AS pgdata  FROM pg_settings WHERE name = 'data_directory' \gset
+SELECT :'pgdata' || '/pg_walminer/wm_datadict/dictionary.d' AS path \gset
+SELECT walminer_build_dictionary(:'path');
+ walminer_build_dictionary 
+---------------------------
+ Dictionary build success!
+(1 row)
+
+SELECT walminer_load_dictionary(:'path');
+ walminer_load_dictionary 
+--------------------------
+ Dictionary load success!
+(1 row)
+
+SELECT pg_walfile_name(pg_current_wal_lsn()) AS walfile_name \gset
+SELECT :'pgdata' || '/pg_wal/' || :'walfile_name' AS walfile_path \gset
+SELECT walminer_wal_add(:'walfile_path');
+  walminer_wal_add  
+--------------------
+ 1 file add success
+(1 row)
+
+SELECT walminer_wal_remove(:'walfile_path');
+  walminer_wal_remove  
+-----------------------
+ 1 file remove success
+(1 row)
+
+SELECT walminer_wal_add(:'walfile_path');
+  walminer_wal_add  
+--------------------
+ 1 file add success
+(1 row)
+
+SELECT walminer_regression_mode();
+ walminer_regression_mode 
+--------------------------
+ t
+(1 row)
+
+SELECT walminer_all();
+    walminer_all     
+---------------------
+ pg_minerwal success
+(1 row)
+
+\x
+SELECT sqlno, topxid=0 as istopxid, op_text, undo_text FROM walminer_contents;
+-[ RECORD 1 ]--------------------------------------------------------------------------------------------------------------
+sqlno     | 1
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,1 ,'walminer_test_string')
+undo_text | DELETE FROM public.t1 WHERE i=1 AND j=1 AND k='walminer_test_string'
+-[ RECORD 2 ]--------------------------------------------------------------------------------------------------------------
+sqlno     | 2
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(2 ,1 ,'walminer_test_string')
+undo_text | DELETE FROM public.t1 WHERE i=2 AND j=1 AND k='walminer_test_string'
+-[ RECORD 3 ]--------------------------------------------------------------------------------------------------------------
+sqlno     | 3
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(3 ,1 ,'walminer_test_string')
+undo_text | DELETE FROM public.t1 WHERE i=3 AND j=1 AND k='walminer_test_string'
+-[ RECORD 4 ]--------------------------------------------------------------------------------------------------------------
+sqlno     | 4
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(4 ,1 ,'walminer_test_string')
+undo_text | DELETE FROM public.t1 WHERE i=4 AND j=1 AND k='walminer_test_string'
+-[ RECORD 5 ]--------------------------------------------------------------------------------------------------------------
+sqlno     | 5
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(5 ,1 ,'walminer_test_string')
+undo_text | DELETE FROM public.t1 WHERE i=5 AND j=1 AND k='walminer_test_string'
+-[ RECORD 6 ]--------------------------------------------------------------------------------------------------------------
+sqlno     | 6
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(6 ,1 ,'walminer_test_string')
+undo_text | DELETE FROM public.t1 WHERE i=6 AND j=1 AND k='walminer_test_string'
+-[ RECORD 7 ]--------------------------------------------------------------------------------------------------------------
+sqlno     | 7
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(7 ,1 ,'walminer_test_string')
+undo_text | DELETE FROM public.t1 WHERE i=7 AND j=1 AND k='walminer_test_string'
+-[ RECORD 8 ]--------------------------------------------------------------------------------------------------------------
+sqlno     | 8
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(8 ,1 ,'walminer_test_string')
+undo_text | DELETE FROM public.t1 WHERE i=8 AND j=1 AND k='walminer_test_string'
+-[ RECORD 9 ]--------------------------------------------------------------------------------------------------------------
+sqlno     | 9
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(9 ,1 ,'walminer_test_string')
+undo_text | DELETE FROM public.t1 WHERE i=9 AND j=1 AND k='walminer_test_string'
+-[ RECORD 10 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 10
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(10 ,1 ,'walminer_test_string')
+undo_text | DELETE FROM public.t1 WHERE i=10 AND j=1 AND k='walminer_test_string'
+-[ RECORD 11 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 1
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,2 ,'sql insert')
+undo_text | DELETE FROM public.t1 WHERE i=1 AND j=2 AND k='sql insert'
+-[ RECORD 12 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 2
+istopxid  | t
+op_text   | DELETE FROM public.t1 WHERE i=1 AND j=1 AND k='walminer_test_string'
+undo_text | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,1 ,'walminer_test_string')
+-[ RECORD 13 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 3
+istopxid  | t
+op_text   | DELETE FROM public.t1 WHERE i=1 AND j=2 AND k='sql insert'
+undo_text | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,2 ,'sql insert')
+-[ RECORD 14 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 4
+istopxid  | t
+op_text   | UPDATE public.t1 SET k='walminer_test_string update' WHERE i=2 AND j=1 AND k='walminer_test_string'
+undo_text | UPDATE public.t1 SET k='walminer_test_string' WHERE i=2 AND j=1 AND k='walminer_test_string update'
+-[ RECORD 15 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 1
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,3 ,'test subtransaction insert')
+undo_text | DELETE FROM public.t1 WHERE i=1 AND j=3 AND k='test subtransaction insert'
+-[ RECORD 16 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 2
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(2 ,3 ,'test subtransaction insert')
+undo_text | DELETE FROM public.t1 WHERE i=2 AND j=3 AND k='test subtransaction insert'
+-[ RECORD 17 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 1
+istopxid  | f
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,4 ,'test subtransaction insert')
+undo_text | DELETE FROM public.t1 WHERE i=1 AND j=4 AND k='test subtransaction insert'
+-[ RECORD 18 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 2
+istopxid  | f
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(2 ,4 ,'test subtransaction insert')
+undo_text | DELETE FROM public.t1 WHERE i=2 AND j=4 AND k='test subtransaction insert'
+-[ RECORD 19 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 3
+istopxid  | f
+op_text   | UPDATE public.t1 SET k='test subtransaction insert Movead' WHERE i=1 AND j=4 AND k='test subtransaction insert'
+undo_text | UPDATE public.t1 SET k='test subtransaction insert' WHERE i=1 AND j=4 AND k='test subtransaction insert Movead'
+-[ RECORD 20 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 4
+istopxid  | f
+op_text   | UPDATE public.t1 SET k='test subtransaction insert Movead' WHERE i=2 AND j=4 AND k='test subtransaction insert'
+undo_text | UPDATE public.t1 SET k='test subtransaction insert' WHERE i=2 AND j=4 AND k='test subtransaction insert Movead'
+-[ RECORD 21 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 1
+istopxid  | f
+op_text   | INSERT INTO public.t2(i ,j ,k) VALUES(1 ,1 ,'test subtransaction insert')
+undo_text | DELETE FROM public.t2 WHERE i=1 AND j=1 AND k='test subtransaction insert'
+-[ RECORD 22 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 2
+istopxid  | f
+op_text   | INSERT INTO public.t2(i ,j ,k) VALUES(2 ,1 ,'test subtransaction insert')
+undo_text | DELETE FROM public.t2 WHERE i=2 AND j=1 AND k='test subtransaction insert'
+-[ RECORD 23 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 3
+istopxid  | f
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,5 ,'test subtransaction insert')
+undo_text | DELETE FROM public.t1 WHERE i=1 AND j=5 AND k='test subtransaction insert'
+-[ RECORD 24 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 4
+istopxid  | f
+op_text   | DELETE FROM public.t2 WHERE i=1 AND j=1 AND k='test subtransaction insert'
+undo_text | INSERT INTO public.t2(i ,j ,k) VALUES(1 ,1 ,'test subtransaction insert')
+-[ RECORD 25 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 1
+istopxid  | f
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,6 ,'test subtransaction insert')
+undo_text | DELETE FROM public.t1 WHERE i=1 AND j=6 AND k='test subtransaction insert'
+-[ RECORD 26 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 2
+istopxid  | f
+op_text   | INSERT INTO public.t2(i ,j ,k) VALUES(1 ,2 ,'test subtransaction insert')
+undo_text | DELETE FROM public.t2 WHERE i=1 AND j=2 AND k='test subtransaction insert'
+-[ RECORD 27 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 1
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,8 ,'test subtransaction insert')
+undo_text | DELETE FROM public.t1 WHERE i=1 AND j=8 AND k='test subtransaction insert'
+-[ RECORD 28 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 2
+istopxid  | t
+op_text   | INSERT INTO public.t2(i ,j ,k) VALUES(1 ,4 ,'test subtransaction insert')
+undo_text | DELETE FROM public.t2 WHERE i=1 AND j=4 AND k='test subtransaction insert'
+-[ RECORD 29 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 1
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,9 ,'test concurrence transaction xid 1')
+undo_text | DELETE FROM public.t1 WHERE i=1 AND j=9 AND k='test concurrence transaction xid 1'
+-[ RECORD 30 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 2
+istopxid  | t
+op_text   | INSERT INTO public.t2(i ,j ,k) VALUES(1 ,5 ,'test concurrence transaction xid 1')
+undo_text | DELETE FROM public.t2 WHERE i=1 AND j=5 AND k='test concurrence transaction xid 1'
+-[ RECORD 31 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 3
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(2 ,9 ,'test concurrence transaction xid 1')
+undo_text | DELETE FROM public.t1 WHERE i=2 AND j=9 AND k='test concurrence transaction xid 1'
+-[ RECORD 32 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 4
+istopxid  | t
+op_text   | INSERT INTO public.t2(i ,j ,k) VALUES(2 ,5 ,'test concurrence transaction xid 1')
+undo_text | DELETE FROM public.t2 WHERE i=2 AND j=5 AND k='test concurrence transaction xid 1'
+-[ RECORD 33 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 1
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,10 ,'test concurrence transaction xid 2')
+undo_text | DELETE FROM public.t1 WHERE i=1 AND j=10 AND k='test concurrence transaction xid 2'
+-[ RECORD 34 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 2
+istopxid  | t
+op_text   | INSERT INTO public.t2(i ,j ,k) VALUES(1 ,6 ,'test concurrence transaction xid 2')
+undo_text | DELETE FROM public.t2 WHERE i=1 AND j=6 AND k='test concurrence transaction xid 2'
+-[ RECORD 35 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 3
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(2 ,10 ,'test concurrence transaction 2')
+undo_text | DELETE FROM public.t1 WHERE i=2 AND j=10 AND k='test concurrence transaction 2'
+-[ RECORD 36 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 4
+istopxid  | t
+op_text   | INSERT INTO public.t2(i ,j ,k) VALUES(2 ,6 ,'test concurrence transaction 2')
+undo_text | DELETE FROM public.t2 WHERE i=2 AND j=6 AND k='test concurrence transaction 2'
+-[ RECORD 37 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 1
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,11 ,'movead')
+undo_text | DELETE FROM public.t1 WHERE i=1 AND j=11 AND k='movead'
+-[ RECORD 38 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 2
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(2 ,11 ,'ashnah')
+undo_text | DELETE FROM public.t1 WHERE i=2 AND j=11 AND k='ashnah'
+-[ RECORD 39 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 3
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(3 ,11 ,'abc')
+undo_text | DELETE FROM public.t1 WHERE i=3 AND j=11 AND k='abc'
+-[ RECORD 40 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 4
+istopxid  | t
+op_text   | INSERT INTO public.t1(i ,j ,k) VALUES(4 ,11 ,'def')
+undo_text | DELETE FROM public.t1 WHERE i=4 AND j=11 AND k='def'
+-[ RECORD 41 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 1
+istopxid  | t
+op_text   | INSERT INTO public.t2(i ,j ,k) VALUES(1 ,7 ,'movead')
+undo_text | DELETE FROM public.t2 WHERE i=1 AND j=7 AND k='movead'
+-[ RECORD 42 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 2
+istopxid  | t
+op_text   | INSERT INTO public.t2(i ,j ,k) VALUES(2 ,7 ,'ashnah')
+undo_text | DELETE FROM public.t2 WHERE i=2 AND j=7 AND k='ashnah'
+-[ RECORD 43 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 3
+istopxid  | t
+op_text   | INSERT INTO public.t2(i ,j ,k) VALUES(3 ,7 ,'abc')
+undo_text | DELETE FROM public.t2 WHERE i=3 AND j=7 AND k='abc'
+-[ RECORD 44 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 4
+istopxid  | t
+op_text   | INSERT INTO public.t2(i ,j ,k) VALUES(4 ,7 ,'def')
+undo_text | DELETE FROM public.t2 WHERE i=4 AND j=7 AND k='def'
+-[ RECORD 45 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 1
+istopxid  | t
+op_text   | DELETE FROM public.t2 WHERE i=2 AND j=1 AND k='test subtransaction insert'
+undo_text | INSERT INTO public.t2(i ,j ,k) VALUES(2 ,1 ,'test subtransaction insert')
+-[ RECORD 46 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 2
+istopxid  | t
+op_text   | DELETE FROM public.t2 WHERE i=2 AND j=5 AND k='test concurrence transaction xid 1'
+undo_text | INSERT INTO public.t2(i ,j ,k) VALUES(2 ,5 ,'test concurrence transaction xid 1')
+-[ RECORD 47 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 3
+istopxid  | t
+op_text   | DELETE FROM public.t2 WHERE i=2 AND j=6 AND k='test concurrence transaction 2'
+undo_text | INSERT INTO public.t2(i ,j ,k) VALUES(2 ,6 ,'test concurrence transaction 2')
+-[ RECORD 48 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 4
+istopxid  | t
+op_text   | DELETE FROM public.t2 WHERE i=2 AND j=7 AND k='ashnah'
+undo_text | INSERT INTO public.t2(i ,j ,k) VALUES(2 ,7 ,'ashnah')
+-[ RECORD 49 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 1
+istopxid  | t
+op_text   | INSERT INTO public.t2(i ,j ,k) VALUES(1 ,7 ,'test_vacuum')
+undo_text | DELETE FROM public.t2 WHERE i=1 AND j=7 AND k='test_vacuum'
+-[ RECORD 50 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 1
+istopxid  | t
+op_text   | INSERT INTO public.t2(i ,j ,k) VALUES(1 ,8 ,'test_vacuum')
+undo_text | DELETE FROM public.t2 WHERE i=1 AND j=8 AND k='test_vacuum'
+-[ RECORD 51 ]-------------------------------------------------------------------------------------------------------------
+sqlno     | 1
+istopxid  | t
+op_text   | INSERT INTO public.t2(i ,j ,k) VALUES(1 ,9 ,'test_vacuum')
+undo_text | DELETE FROM public.t2 WHERE i=1 AND j=9 AND k='test_vacuum'
+
+\x

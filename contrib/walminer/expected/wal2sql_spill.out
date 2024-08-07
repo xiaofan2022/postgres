@@ -1,0 +1,433 @@
+DROP EXTENSION IF EXISTS walminer;
+CREATE EXTENSION IF NOT EXISTS walminer;
+DROP TABLE t1;
+DROP TABLE t2;
+SELECT walminer_stop();
+  walminer_stop   
+------------------
+ walminer stoped!
+(1 row)
+
+CREATE TABLE t1(i int, j int, k varchar);
+CREATE TABLE t2(i int, j int, k varchar);
+SELECT 1 FROM pg_switch_wal();
+ ?column? 
+----------
+        1
+(1 row)
+
+CHECKPOINT;
+BEGIN;
+INSERT INTO t1 SELECT generate_series(1,50), 1, 'walminer_test_spill';
+COMMIT;
+SELECT walminer_stop();
+  walminer_stop   
+------------------
+ walminer stoped!
+(1 row)
+
+SELECT pg_walfile_name(pg_current_wal_lsn()) AS walfile_name \gset
+SELECT 'pg_wal/' || :'walfile_name' AS walfile_path \gset
+SELECT walminer_wal_add(:'walfile_path');
+  walminer_wal_add  
+--------------------
+ 1 file add success
+(1 row)
+
+SELECT walminer_regression_mode();
+ walminer_regression_mode 
+--------------------------
+ t
+(1 row)
+
+SELECT walminer_mrecords_inmemory(11);
+ walminer_mrecords_inmemory 
+----------------------------
+                         11
+(1 row)
+
+SELECT wal2sql();
+       wal2sql       
+---------------------
+ pg_minerwal success
+(1 row)
+
+SELECT sqlno, topxid=0 as istopxid, op_text FROM walminer_contents;
+ sqlno | istopxid |                               op_text                               
+-------+----------+---------------------------------------------------------------------
+     1 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,1 ,'walminer_test_spill')
+     2 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(2 ,1 ,'walminer_test_spill')
+     3 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(3 ,1 ,'walminer_test_spill')
+     4 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(4 ,1 ,'walminer_test_spill')
+     5 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(5 ,1 ,'walminer_test_spill')
+     6 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(6 ,1 ,'walminer_test_spill')
+     7 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(7 ,1 ,'walminer_test_spill')
+     8 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(8 ,1 ,'walminer_test_spill')
+     9 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(9 ,1 ,'walminer_test_spill')
+    10 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(10 ,1 ,'walminer_test_spill')
+    11 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(11 ,1 ,'walminer_test_spill')
+    12 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(12 ,1 ,'walminer_test_spill')
+    13 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(13 ,1 ,'walminer_test_spill')
+    14 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(14 ,1 ,'walminer_test_spill')
+    15 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(15 ,1 ,'walminer_test_spill')
+    16 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(16 ,1 ,'walminer_test_spill')
+    17 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(17 ,1 ,'walminer_test_spill')
+    18 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(18 ,1 ,'walminer_test_spill')
+    19 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(19 ,1 ,'walminer_test_spill')
+    20 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(20 ,1 ,'walminer_test_spill')
+    21 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(21 ,1 ,'walminer_test_spill')
+    22 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(22 ,1 ,'walminer_test_spill')
+    23 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(23 ,1 ,'walminer_test_spill')
+    24 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(24 ,1 ,'walminer_test_spill')
+    25 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(25 ,1 ,'walminer_test_spill')
+    26 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(26 ,1 ,'walminer_test_spill')
+    27 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(27 ,1 ,'walminer_test_spill')
+    28 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(28 ,1 ,'walminer_test_spill')
+    29 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(29 ,1 ,'walminer_test_spill')
+    30 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(30 ,1 ,'walminer_test_spill')
+    31 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(31 ,1 ,'walminer_test_spill')
+    32 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(32 ,1 ,'walminer_test_spill')
+    33 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(33 ,1 ,'walminer_test_spill')
+    34 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(34 ,1 ,'walminer_test_spill')
+    35 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(35 ,1 ,'walminer_test_spill')
+    36 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(36 ,1 ,'walminer_test_spill')
+    37 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(37 ,1 ,'walminer_test_spill')
+    38 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(38 ,1 ,'walminer_test_spill')
+    39 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(39 ,1 ,'walminer_test_spill')
+    40 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(40 ,1 ,'walminer_test_spill')
+    41 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(41 ,1 ,'walminer_test_spill')
+    42 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(42 ,1 ,'walminer_test_spill')
+    43 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(43 ,1 ,'walminer_test_spill')
+    44 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(44 ,1 ,'walminer_test_spill')
+    45 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(45 ,1 ,'walminer_test_spill')
+    46 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(46 ,1 ,'walminer_test_spill')
+    47 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(47 ,1 ,'walminer_test_spill')
+    48 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(48 ,1 ,'walminer_test_spill')
+    49 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(49 ,1 ,'walminer_test_spill')
+    50 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(50 ,1 ,'walminer_test_spill')
+(50 rows)
+
+SELECT walminer_mrecords_inmemory(20);
+ walminer_mrecords_inmemory 
+----------------------------
+                         20
+(1 row)
+
+SELECT walminer_stop();
+  walminer_stop   
+------------------
+ walminer stoped!
+(1 row)
+
+SELECT pg_walfile_name(pg_current_wal_lsn()) AS walfile_name \gset
+SELECT 'pg_wal/' || :'walfile_name' AS walfile_path \gset
+SELECT walminer_wal_add(:'walfile_path');
+  walminer_wal_add  
+--------------------
+ 1 file add success
+(1 row)
+
+SELECT wal2sql();
+       wal2sql       
+---------------------
+ pg_minerwal success
+(1 row)
+
+SELECT sqlno, topxid=0 as istopxid, op_text FROM walminer_contents;
+ sqlno | istopxid |                               op_text                               
+-------+----------+---------------------------------------------------------------------
+     1 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,1 ,'walminer_test_spill')
+     2 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(2 ,1 ,'walminer_test_spill')
+     3 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(3 ,1 ,'walminer_test_spill')
+     4 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(4 ,1 ,'walminer_test_spill')
+     5 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(5 ,1 ,'walminer_test_spill')
+     6 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(6 ,1 ,'walminer_test_spill')
+     7 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(7 ,1 ,'walminer_test_spill')
+     8 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(8 ,1 ,'walminer_test_spill')
+     9 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(9 ,1 ,'walminer_test_spill')
+    10 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(10 ,1 ,'walminer_test_spill')
+    11 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(11 ,1 ,'walminer_test_spill')
+    12 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(12 ,1 ,'walminer_test_spill')
+    13 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(13 ,1 ,'walminer_test_spill')
+    14 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(14 ,1 ,'walminer_test_spill')
+    15 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(15 ,1 ,'walminer_test_spill')
+    16 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(16 ,1 ,'walminer_test_spill')
+    17 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(17 ,1 ,'walminer_test_spill')
+    18 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(18 ,1 ,'walminer_test_spill')
+    19 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(19 ,1 ,'walminer_test_spill')
+    20 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(20 ,1 ,'walminer_test_spill')
+    21 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(21 ,1 ,'walminer_test_spill')
+    22 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(22 ,1 ,'walminer_test_spill')
+    23 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(23 ,1 ,'walminer_test_spill')
+    24 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(24 ,1 ,'walminer_test_spill')
+    25 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(25 ,1 ,'walminer_test_spill')
+    26 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(26 ,1 ,'walminer_test_spill')
+    27 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(27 ,1 ,'walminer_test_spill')
+    28 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(28 ,1 ,'walminer_test_spill')
+    29 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(29 ,1 ,'walminer_test_spill')
+    30 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(30 ,1 ,'walminer_test_spill')
+    31 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(31 ,1 ,'walminer_test_spill')
+    32 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(32 ,1 ,'walminer_test_spill')
+    33 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(33 ,1 ,'walminer_test_spill')
+    34 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(34 ,1 ,'walminer_test_spill')
+    35 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(35 ,1 ,'walminer_test_spill')
+    36 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(36 ,1 ,'walminer_test_spill')
+    37 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(37 ,1 ,'walminer_test_spill')
+    38 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(38 ,1 ,'walminer_test_spill')
+    39 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(39 ,1 ,'walminer_test_spill')
+    40 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(40 ,1 ,'walminer_test_spill')
+    41 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(41 ,1 ,'walminer_test_spill')
+    42 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(42 ,1 ,'walminer_test_spill')
+    43 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(43 ,1 ,'walminer_test_spill')
+    44 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(44 ,1 ,'walminer_test_spill')
+    45 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(45 ,1 ,'walminer_test_spill')
+    46 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(46 ,1 ,'walminer_test_spill')
+    47 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(47 ,1 ,'walminer_test_spill')
+    48 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(48 ,1 ,'walminer_test_spill')
+    49 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(49 ,1 ,'walminer_test_spill')
+    50 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(50 ,1 ,'walminer_test_spill')
+(50 rows)
+
+SELECT walminer_mrecords_inmemory(49);
+ walminer_mrecords_inmemory 
+----------------------------
+                         49
+(1 row)
+
+SELECT walminer_stop();
+  walminer_stop   
+------------------
+ walminer stoped!
+(1 row)
+
+SELECT pg_walfile_name(pg_current_wal_lsn()) AS walfile_name \gset
+SELECT 'pg_wal/' || :'walfile_name' AS walfile_path \gset
+SELECT walminer_wal_add(:'walfile_path');
+  walminer_wal_add  
+--------------------
+ 1 file add success
+(1 row)
+
+SELECT wal2sql();
+       wal2sql       
+---------------------
+ pg_minerwal success
+(1 row)
+
+SELECT sqlno, topxid=0 as istopxid, op_text FROM walminer_contents;
+ sqlno | istopxid |                               op_text                               
+-------+----------+---------------------------------------------------------------------
+     1 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,1 ,'walminer_test_spill')
+     2 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(2 ,1 ,'walminer_test_spill')
+     3 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(3 ,1 ,'walminer_test_spill')
+     4 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(4 ,1 ,'walminer_test_spill')
+     5 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(5 ,1 ,'walminer_test_spill')
+     6 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(6 ,1 ,'walminer_test_spill')
+     7 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(7 ,1 ,'walminer_test_spill')
+     8 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(8 ,1 ,'walminer_test_spill')
+     9 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(9 ,1 ,'walminer_test_spill')
+    10 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(10 ,1 ,'walminer_test_spill')
+    11 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(11 ,1 ,'walminer_test_spill')
+    12 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(12 ,1 ,'walminer_test_spill')
+    13 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(13 ,1 ,'walminer_test_spill')
+    14 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(14 ,1 ,'walminer_test_spill')
+    15 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(15 ,1 ,'walminer_test_spill')
+    16 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(16 ,1 ,'walminer_test_spill')
+    17 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(17 ,1 ,'walminer_test_spill')
+    18 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(18 ,1 ,'walminer_test_spill')
+    19 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(19 ,1 ,'walminer_test_spill')
+    20 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(20 ,1 ,'walminer_test_spill')
+    21 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(21 ,1 ,'walminer_test_spill')
+    22 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(22 ,1 ,'walminer_test_spill')
+    23 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(23 ,1 ,'walminer_test_spill')
+    24 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(24 ,1 ,'walminer_test_spill')
+    25 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(25 ,1 ,'walminer_test_spill')
+    26 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(26 ,1 ,'walminer_test_spill')
+    27 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(27 ,1 ,'walminer_test_spill')
+    28 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(28 ,1 ,'walminer_test_spill')
+    29 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(29 ,1 ,'walminer_test_spill')
+    30 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(30 ,1 ,'walminer_test_spill')
+    31 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(31 ,1 ,'walminer_test_spill')
+    32 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(32 ,1 ,'walminer_test_spill')
+    33 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(33 ,1 ,'walminer_test_spill')
+    34 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(34 ,1 ,'walminer_test_spill')
+    35 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(35 ,1 ,'walminer_test_spill')
+    36 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(36 ,1 ,'walminer_test_spill')
+    37 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(37 ,1 ,'walminer_test_spill')
+    38 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(38 ,1 ,'walminer_test_spill')
+    39 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(39 ,1 ,'walminer_test_spill')
+    40 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(40 ,1 ,'walminer_test_spill')
+    41 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(41 ,1 ,'walminer_test_spill')
+    42 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(42 ,1 ,'walminer_test_spill')
+    43 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(43 ,1 ,'walminer_test_spill')
+    44 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(44 ,1 ,'walminer_test_spill')
+    45 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(45 ,1 ,'walminer_test_spill')
+    46 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(46 ,1 ,'walminer_test_spill')
+    47 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(47 ,1 ,'walminer_test_spill')
+    48 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(48 ,1 ,'walminer_test_spill')
+    49 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(49 ,1 ,'walminer_test_spill')
+    50 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(50 ,1 ,'walminer_test_spill')
+(50 rows)
+
+SELECT walminer_mrecords_inmemory(50);
+ walminer_mrecords_inmemory 
+----------------------------
+                         50
+(1 row)
+
+SELECT walminer_stop();
+  walminer_stop   
+------------------
+ walminer stoped!
+(1 row)
+
+SELECT pg_walfile_name(pg_current_wal_lsn()) AS walfile_name \gset
+SELECT 'pg_wal/' || :'walfile_name' AS walfile_path \gset
+SELECT walminer_wal_add(:'walfile_path');
+  walminer_wal_add  
+--------------------
+ 1 file add success
+(1 row)
+
+SELECT wal2sql();
+       wal2sql       
+---------------------
+ pg_minerwal success
+(1 row)
+
+SELECT sqlno, topxid=0 as istopxid, op_text FROM walminer_contents;
+ sqlno | istopxid |                               op_text                               
+-------+----------+---------------------------------------------------------------------
+     1 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,1 ,'walminer_test_spill')
+     2 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(2 ,1 ,'walminer_test_spill')
+     3 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(3 ,1 ,'walminer_test_spill')
+     4 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(4 ,1 ,'walminer_test_spill')
+     5 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(5 ,1 ,'walminer_test_spill')
+     6 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(6 ,1 ,'walminer_test_spill')
+     7 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(7 ,1 ,'walminer_test_spill')
+     8 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(8 ,1 ,'walminer_test_spill')
+     9 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(9 ,1 ,'walminer_test_spill')
+    10 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(10 ,1 ,'walminer_test_spill')
+    11 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(11 ,1 ,'walminer_test_spill')
+    12 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(12 ,1 ,'walminer_test_spill')
+    13 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(13 ,1 ,'walminer_test_spill')
+    14 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(14 ,1 ,'walminer_test_spill')
+    15 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(15 ,1 ,'walminer_test_spill')
+    16 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(16 ,1 ,'walminer_test_spill')
+    17 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(17 ,1 ,'walminer_test_spill')
+    18 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(18 ,1 ,'walminer_test_spill')
+    19 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(19 ,1 ,'walminer_test_spill')
+    20 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(20 ,1 ,'walminer_test_spill')
+    21 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(21 ,1 ,'walminer_test_spill')
+    22 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(22 ,1 ,'walminer_test_spill')
+    23 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(23 ,1 ,'walminer_test_spill')
+    24 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(24 ,1 ,'walminer_test_spill')
+    25 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(25 ,1 ,'walminer_test_spill')
+    26 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(26 ,1 ,'walminer_test_spill')
+    27 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(27 ,1 ,'walminer_test_spill')
+    28 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(28 ,1 ,'walminer_test_spill')
+    29 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(29 ,1 ,'walminer_test_spill')
+    30 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(30 ,1 ,'walminer_test_spill')
+    31 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(31 ,1 ,'walminer_test_spill')
+    32 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(32 ,1 ,'walminer_test_spill')
+    33 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(33 ,1 ,'walminer_test_spill')
+    34 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(34 ,1 ,'walminer_test_spill')
+    35 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(35 ,1 ,'walminer_test_spill')
+    36 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(36 ,1 ,'walminer_test_spill')
+    37 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(37 ,1 ,'walminer_test_spill')
+    38 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(38 ,1 ,'walminer_test_spill')
+    39 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(39 ,1 ,'walminer_test_spill')
+    40 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(40 ,1 ,'walminer_test_spill')
+    41 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(41 ,1 ,'walminer_test_spill')
+    42 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(42 ,1 ,'walminer_test_spill')
+    43 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(43 ,1 ,'walminer_test_spill')
+    44 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(44 ,1 ,'walminer_test_spill')
+    45 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(45 ,1 ,'walminer_test_spill')
+    46 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(46 ,1 ,'walminer_test_spill')
+    47 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(47 ,1 ,'walminer_test_spill')
+    48 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(48 ,1 ,'walminer_test_spill')
+    49 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(49 ,1 ,'walminer_test_spill')
+    50 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(50 ,1 ,'walminer_test_spill')
+(50 rows)
+
+SELECT walminer_mrecords_inmemory(51);
+ walminer_mrecords_inmemory 
+----------------------------
+                         51
+(1 row)
+
+SELECT walminer_stop();
+  walminer_stop   
+------------------
+ walminer stoped!
+(1 row)
+
+SELECT pg_walfile_name(pg_current_wal_lsn()) AS walfile_name \gset
+SELECT 'pg_wal/' || :'walfile_name' AS walfile_path \gset
+SELECT walminer_wal_add(:'walfile_path');
+  walminer_wal_add  
+--------------------
+ 1 file add success
+(1 row)
+
+SELECT wal2sql();
+       wal2sql       
+---------------------
+ pg_minerwal success
+(1 row)
+
+SELECT sqlno, topxid=0 as istopxid, op_text FROM walminer_contents;
+ sqlno | istopxid |                               op_text                               
+-------+----------+---------------------------------------------------------------------
+     1 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,1 ,'walminer_test_spill')
+     2 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(2 ,1 ,'walminer_test_spill')
+     3 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(3 ,1 ,'walminer_test_spill')
+     4 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(4 ,1 ,'walminer_test_spill')
+     5 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(5 ,1 ,'walminer_test_spill')
+     6 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(6 ,1 ,'walminer_test_spill')
+     7 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(7 ,1 ,'walminer_test_spill')
+     8 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(8 ,1 ,'walminer_test_spill')
+     9 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(9 ,1 ,'walminer_test_spill')
+    10 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(10 ,1 ,'walminer_test_spill')
+    11 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(11 ,1 ,'walminer_test_spill')
+    12 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(12 ,1 ,'walminer_test_spill')
+    13 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(13 ,1 ,'walminer_test_spill')
+    14 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(14 ,1 ,'walminer_test_spill')
+    15 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(15 ,1 ,'walminer_test_spill')
+    16 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(16 ,1 ,'walminer_test_spill')
+    17 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(17 ,1 ,'walminer_test_spill')
+    18 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(18 ,1 ,'walminer_test_spill')
+    19 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(19 ,1 ,'walminer_test_spill')
+    20 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(20 ,1 ,'walminer_test_spill')
+    21 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(21 ,1 ,'walminer_test_spill')
+    22 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(22 ,1 ,'walminer_test_spill')
+    23 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(23 ,1 ,'walminer_test_spill')
+    24 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(24 ,1 ,'walminer_test_spill')
+    25 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(25 ,1 ,'walminer_test_spill')
+    26 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(26 ,1 ,'walminer_test_spill')
+    27 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(27 ,1 ,'walminer_test_spill')
+    28 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(28 ,1 ,'walminer_test_spill')
+    29 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(29 ,1 ,'walminer_test_spill')
+    30 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(30 ,1 ,'walminer_test_spill')
+    31 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(31 ,1 ,'walminer_test_spill')
+    32 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(32 ,1 ,'walminer_test_spill')
+    33 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(33 ,1 ,'walminer_test_spill')
+    34 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(34 ,1 ,'walminer_test_spill')
+    35 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(35 ,1 ,'walminer_test_spill')
+    36 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(36 ,1 ,'walminer_test_spill')
+    37 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(37 ,1 ,'walminer_test_spill')
+    38 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(38 ,1 ,'walminer_test_spill')
+    39 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(39 ,1 ,'walminer_test_spill')
+    40 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(40 ,1 ,'walminer_test_spill')
+    41 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(41 ,1 ,'walminer_test_spill')
+    42 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(42 ,1 ,'walminer_test_spill')
+    43 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(43 ,1 ,'walminer_test_spill')
+    44 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(44 ,1 ,'walminer_test_spill')
+    45 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(45 ,1 ,'walminer_test_spill')
+    46 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(46 ,1 ,'walminer_test_spill')
+    47 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(47 ,1 ,'walminer_test_spill')
+    48 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(48 ,1 ,'walminer_test_spill')
+    49 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(49 ,1 ,'walminer_test_spill')
+    50 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(50 ,1 ,'walminer_test_spill')
+(50 rows)
+

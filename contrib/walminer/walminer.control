@@ -1,0 +1,5 @@
+# walminer extension
+comment = 'analyse wal to SQL'
+default_version = '3.0'
+module_pathname = '$libdir/walminer'
+relocatable = true

@@ -1,0 +1,24 @@
+| No   |                  |                     |
+| ---- | ---------------- | ------------------- |
+| 1    | RM_XLOG_ID       | "XLOG"              |
+| 2    | RM_XACT_ID       | "Transaction"       |
+| 3    | RM_SMGR_ID       | "Storage"           |
+| 4    | RM_CLOG_ID       | "CLOG"              |
+| 5    | RM_DBASE_ID      | "Database"          |
+| 6    | RM_TBLSPC_ID     | "Tablespace"        |
+| 7    | RM_MULTIXACT_ID  | "MultiXact"         |
+| 8    | RM_RELMAP_ID     | "RelMap"            |
+| 9    | RM_STANDBY_ID    | "Standby"           |
+| 10   | RM_HEAP2_ID      | "Heap2"             |
+| 11   | RM_HEAP_ID       | "Heap"              |
+| 12   | RM_BTREE_ID      | "Btree"             |
+| 13   | RM_HASH_ID       | "Hash"              |
+| 14   | RM_GIN_ID        | "Gin"               |
+| 15   | RM_GIST_ID       | "Gist"              |
+| 16   | RM_SEQ_ID        | "Sequence"          |
+| 17   | RM_SPGIST_ID     | "SPGist"            |
+| 18   | RM_BRIN_ID       | "BRIN"              |
+| 19   | RM_COMMIT_TS_ID  | "CommitTs"          |
+| 20   | RM_REPLORIGIN_ID | "ReplicationOrigin" |
+| 21   | RM_GENERIC_ID    | "Generic"           |
+| 22   | RM_LOGICALMSG_ID | "LogicalMessage"    |

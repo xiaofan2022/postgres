@@ -1,0 +1,210 @@
+DROP EXTENSION IF EXISTS walminer;
+CREATE EXTENSION IF NOT EXISTS walminer;
+DROP TABLE t1;
+ERROR:  table "t1" does not exist
+DROP TABLE t2;
+ERROR:  table "t2" does not exist
+SELECT walminer_stop();
+  walminer_stop   
+------------------
+ walminer stoped!
+(1 row)
+
+CREATE TABLE t1(i int, j int, k varchar);
+CREATE TABLE t2(i int, j int, k varchar);
+INSERT INTO t1(i,j,k) SELECT generate_series(1,157),1,'PostgreSQL';
+INSERT INTO t1(i,j,k) SELECT generate_series(1,157),2,'PostgreSQL';
+INSERT INTO t1(i,j,k) SELECT generate_series(1,157),3,'PostgreSQL';
+DELETE FROM t1 WHERE j = 1 AND NOT( ctid >= '(0,1)' AND ctid <= '(0,157)');
+DELETE FROM t1 WHERE j = 2 AND NOT( ctid >= '(1,1)' AND ctid <= '(1,157)');
+DELETE FROM t1 WHERE j = 3 AND NOT( ctid >= '(2,1)' AND ctid <= '(2,157)');
+SELECT count(*) AS count1_1 FROM t1 WHERE j = 1 \gset
+SELECT count(*) AS count2_1 FROM t1 WHERE j = 2 \gset
+SELECT count(*) AS count3_1 FROM t1 WHERE j = 3 \gset
+SELECT relfilenode AS node_in_datadict FROM pg_class WHERE relname = 't1' \gset
+SELECT oid AS oid_in_curdb FROM pg_class WHERE relname = 't2' \gset
+SELECT setting  AS pgdata  FROM pg_settings WHERE name = 'data_directory' \gset
+SELECT :'pgdata' || '/pg_walminer/wm_datadict/dictionary.d' AS path \gset
+SELECT pg_walfile_name(pg_current_wal_lsn()) AS walfile_name \gset
+SELECT :'pgdata' || '/pg_wal/' || :'walfile_name' AS walfile_path \gset
+SELECT walminer_build_dictionary(:'path');
+ walminer_build_dictionary 
+---------------------------
+ Dictionary build success!
+(1 row)
+
+SELECT walminer_load_dictionary(:'path');
+ walminer_load_dictionary 
+--------------------------
+ Dictionary load success!
+(1 row)
+
+SELECT walminer_wal_add(:'walfile_path');
+  walminer_wal_add  
+--------------------
+ 1 file add success
+(1 row)
+
+SELECT walminer_regression_mode();
+ walminer_regression_mode 
+--------------------------
+ t
+(1 row)
+
+-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+TRUNCATE t2;
+SELECT page_collect(:'node_in_datadict', :'oid_in_curdb', '0');
+     page_collect     
+----------------------
+ page collect success
+(1 row)
+
+SELECT count(*) AS count1_2 FROM t2 WHERE ctid >= '(0,1)' AND ctid <= '(0,157)' \gset
+SELECT count(*) AS count2_2 FROM t2 WHERE ctid >= '(1,1)' AND ctid <= '(1,157)' \gset
+SELECT count(*) AS count3_2 FROM t2 WHERE ctid >= '(2,1)' AND ctid <= '(2,157)' \gset
+SELECT :'count1_1' = :'count1_2';
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT 0 = :'count2_2';
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT 0 = :'count3_2';
+ ?column? 
+----------
+ t
+(1 row)
+
+-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+TRUNCATE t2;
+SELECT page_collect(:'node_in_datadict', :'oid_in_curdb', '1');
+     page_collect     
+----------------------
+ page collect success
+(1 row)
+
+SELECT count(*) AS count1_2 FROM t2 WHERE ctid >= '(0,1)' AND ctid <= '(0,157)' \gset
+SELECT count(*) AS count2_2 FROM t2 WHERE ctid >= '(1,1)' AND ctid <= '(1,157)' \gset
+SELECT count(*) AS count3_2 FROM t2 WHERE ctid >= '(2,1)' AND ctid <= '(2,157)' \gset
+SELECT 0 = :'count1_2';
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT :'count2_1' = :'count2_2';
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT 0 = :'count3_2';
+ ?column? 
+----------
+ t
+(1 row)
+
+-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+TRUNCATE t2;
+SELECT page_collect(:'node_in_datadict', :'oid_in_curdb', '2');
+     page_collect     
+----------------------
+ page collect success
+(1 row)
+
+SELECT count(*) AS count1_2 FROM t2 WHERE ctid >= '(0,1)' AND ctid <= '(0,157)' \gset
+SELECT count(*) AS count2_2 FROM t2 WHERE ctid >= '(1,1)' AND ctid <= '(1,157)' \gset
+SELECT count(*) AS count3_2 FROM t2 WHERE ctid >= '(2,1)' AND ctid <= '(2,157)' \gset
+SELECT 0 = :'count1_2';
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT 0 = :'count2_2';
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT :'count3_1' = :'count3_2';
+ ?column? 
+----------
+ t
+(1 row)
+
+-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+TRUNCATE t2;
+SELECT page_collect(:'node_in_datadict', :'oid_in_curdb', '1,3');
+     page_collect     
+----------------------
+ page collect success
+(1 row)
+
+SELECT count(*) AS count1_2 FROM t2 WHERE ctid >= '(0,1)' AND ctid <= '(0,157)' \gset
+SELECT count(*) AS count2_2 FROM t2 WHERE ctid >= '(1,1)' AND ctid <= '(1,157)' \gset
+SELECT count(*) AS count3_2 FROM t2 WHERE ctid >= '(2,1)' AND ctid <= '(2,157)' \gset
+SELECT :'count1_1' = :'count1_2';
+ ?column? 
+----------
+ f
+(1 row)
+
+SELECT 0 = :'count2_2';
+ ?column? 
+----------
+ f
+(1 row)
+
+SELECT :'count3_1' = :'count3_2';
+ ?column? 
+----------
+ f
+(1 row)
+
+-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+TRUNCATE t2;
+SELECT page_collect(:'node_in_datadict', :'oid_in_curdb', 'all');
+     page_collect     
+----------------------
+ page collect success
+(1 row)
+
+SELECT count(*) AS count1_2 FROM t2 WHERE ctid >= '(0,1)' AND ctid <= '(0,157)' \gset
+SELECT count(*) AS count2_2 FROM t2 WHERE ctid >= '(1,1)' AND ctid <= '(1,157)' \gset
+SELECT count(*) AS count3_2 FROM t2 WHERE ctid >= '(2,1)' AND ctid <= '(2,157)' \gset
+SELECT :'count1_1' = :'count1_2';
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT :'count2_1' = :'count2_2';
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT :'count3_1' = :'count3_2';
+ ?column? 
+----------
+ t
+(1 row)
+
+SELECT :'count1_1',:'count2_1', :'count3_1';
+ ?column? | ?column? | ?column? 
+----------+----------+----------
+ 157      | 157      | 157
+(1 row)
+
+SELECT :'count1_2',:'count2_2', :'count3_2';
+ ?column? | ?column? | ?column? 
+----------+----------+----------
+ 157      | 157      | 157
+(1 row)
+

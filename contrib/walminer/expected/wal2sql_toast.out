@@ -1,0 +1,55 @@
+DROP EXTENSION IF EXISTS walminer;
+CREATE EXTENSION IF NOT EXISTS walminer;
+DROP TABLE t1;
+SELECT 1 FROM pg_switch_wal();
+ ?column? 
+----------
+        1
+(1 row)
+
+CHECKPOINT;
+CREATE TABLE t1(i int, j int, k varchar);
+ALTER TABLE t1 ALTER COLUMN k SET STORAGE EXTERNAL;
+SELECT 'pg_toast.pg_toast_' || oid AS toast_table_name FROM pg_class WHERE relname ='t1' \gset
+INSERT INTO t1 VALUES(1,1,repeat('PostgreSQL',2800));
+UPDATE t1 SET k = k || 'test_toast' WHERE i = 1;
+DELETE FROM t1 WHERE i = 1;
+select chunk_id,chunk_seq from :toast_table_name;
+ chunk_id | chunk_seq 
+----------+-----------
+(0 rows)
+
+SELECT walminer_stop();
+  walminer_stop   
+------------------
+ walminer stoped!
+(1 row)
+
+SELECT pg_walfile_name(pg_current_wal_lsn()) AS walfile_name \gset
+SELECT 'pg_wal/' || :'walfile_name' AS walfile_path \gset
+SELECT walminer_wal_add(:'walfile_path');
+  walminer_wal_add  
+--------------------
+ 1 file add success
+(1 row)
+
+SELECT walminer_regression_mode();
+ walminer_regression_mode 
+--------------------------
+ t
+(1 row)
+
+SELECT wal2sql();
+       wal2sql       
+---------------------
+ pg_minerwal success
+(1 row)
+
+SELECT sqlno, topxid=0 as istopxid, length(op_text) FROM walminer_contents;
+ sqlno | istopxid | length 
+-------+----------+--------
+     1 | t        |  28047
+     1 | t        |  56062
+     1 | t        |  28058
+(3 rows)
+

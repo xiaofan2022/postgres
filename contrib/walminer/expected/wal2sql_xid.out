@@ -1,0 +1,117 @@
+DROP EXTENSION IF EXISTS walminer;
+CREATE EXTENSION IF NOT EXISTS walminer;
+DROP TABLE t1;
+DROP TABLE t2;
+SELECT walminer_stop();
+  walminer_stop   
+------------------
+ walminer stoped!
+(1 row)
+
+CREATE TABLE t1(i int, j int, k varchar);
+CREATE TABLE t2(i int, j int, k varchar);
+SELECT 1 FROM pg_switch_wal();
+ ?column? 
+----------
+        1
+(1 row)
+
+CHECKPOINT;
+BEGIN;
+INSERT INTO t1 VALUES(1,1, 'time_xid');
+SELECT txid_current() AS xid1 \gset
+COMMIT;
+BEGIN;
+INSERT INTO t1 VALUES(1,2, 'time_xid');
+INSERT INTO t2 VALUES(2,2, 'time_xid');
+SELECT txid_current() AS xid2 \gset
+END;
+SELECT txid_current() AS xid3 \gset
+INSERT INTO t1 VALUES(1,3, 'time_xid');
+INSERT INTO t2 VALUES(2,3, 'time_xid');
+SELECT txid_current() AS xid4 \gset
+SELECT walminer_regression_mode();
+ walminer_regression_mode 
+--------------------------
+ t
+(1 row)
+
+SELECT walminer_stop();
+  walminer_stop   
+------------------
+ walminer stoped!
+(1 row)
+
+SELECT pg_walfile_name(pg_current_wal_lsn()) AS walfile_name \gset
+SELECT 'pg_wal/' || :'walfile_name' AS walfile_path \gset
+SELECT walminer_wal_add(:'walfile_path');
+  walminer_wal_add  
+--------------------
+ 1 file add success
+(1 row)
+
+SELECT wal2sql(:'xid1'::int);
+       wal2sql       
+---------------------
+ pg_minerwal success
+(1 row)
+
+SELECT sqlno, topxid=0 as istopxid, op_text FROM walminer_contents;
+ sqlno | istopxid |                         op_text                         
+-------+----------+---------------------------------------------------------
+     1 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,1 ,'time_xid')
+(1 row)
+
+SELECT walminer_stop();
+  walminer_stop   
+------------------
+ walminer stoped!
+(1 row)
+
+SELECT pg_walfile_name(pg_current_wal_lsn()) AS walfile_name \gset
+SELECT 'pg_wal/' || :'walfile_name' AS walfile_path \gset
+SELECT walminer_wal_add(:'walfile_path');
+  walminer_wal_add  
+--------------------
+ 1 file add success
+(1 row)
+
+SELECT walminer_by_xid(:'xid2');
+   walminer_by_xid   
+---------------------
+ pg_minerwal success
+(1 row)
+
+SELECT sqlno, topxid=0 as istopxid, op_text FROM walminer_contents;
+ sqlno | istopxid |                         op_text                         
+-------+----------+---------------------------------------------------------
+     1 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,2 ,'time_xid')
+     2 | t        | INSERT INTO public.t2(i ,j ,k) VALUES(2 ,2 ,'time_xid')
+(2 rows)
+
+SELECT walminer_stop();
+  walminer_stop   
+------------------
+ walminer stoped!
+(1 row)
+
+SELECT pg_walfile_name(pg_current_wal_lsn()) AS walfile_name \gset
+SELECT 'pg_wal/' || :'walfile_name' AS walfile_path \gset
+SELECT walminer_wal_add(:'walfile_path');
+  walminer_wal_add  
+--------------------
+ 1 file add success
+(1 row)
+
+SELECT walminer_by_xid(:'xid3'::int + 1);
+   walminer_by_xid   
+---------------------
+ pg_minerwal success
+(1 row)
+
+SELECT sqlno, topxid=0 as istopxid, op_text FROM walminer_contents;
+ sqlno | istopxid |                         op_text                         
+-------+----------+---------------------------------------------------------
+     1 | t        | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,3 ,'time_xid')
+(1 row)
+

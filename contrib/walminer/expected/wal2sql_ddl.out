@@ -1,0 +1,57 @@
+DROP EXTENSION IF EXISTS walminer;
+CREATE EXTENSION IF NOT EXISTS walminer;
+CHECKPOINT;
+DROP TABLE t1;
+DROP TABLE t2;
+SELECT walminer_stop();
+  walminer_stop   
+------------------
+ walminer stoped!
+(1 row)
+
+SELECT pg_current_wal_lsn() AS lsn1 \gset
+CREATE TABLE t1(i int, j int, k varchar);
+CREATE TABLE t2(i int, j text, k varchar);
+TRUNCATE t1;
+ALTER TABLE t2 ADD COLUMN m int;
+ALTER TABLE t2 DROP COLUMN k; 
+ALTER TABLE t2 ALTER COLUMN m TYPE int8;
+ALTER TABLE t2 RENAME COLUMN m to n;
+ALTER TABLE t2 RENAME TO t2_1;
+DROP TABLE t1;
+SELECT pg_current_wal_lsn() AS lsn2 \gset
+SELECT wal2sql_with_ddl();
+ wal2sql_with_ddl 
+------------------
+ t
+(1 row)
+
+SELECT walminer_regression_mode();
+ walminer_regression_mode 
+--------------------------
+ t
+(1 row)
+
+SELECT wal2sql(:'lsn1'::pg_lsn, :'lsn2'::pg_lsn, 'true');
+NOTICE:  Con not find relfilenode XXX in dictionary, ignored related records
+NOTICE:  Con not find relfilenode XXX in dictionary, ignored related records
+NOTICE:  Con not find relfilenode XXX in dictionary, ignored related records
+       wal2sql       
+---------------------
+ pg_minerwal success
+(1 row)
+
+SELECT sqlno, topxid=0 as istopxid, op_text FROM walminer_contents;
+ sqlno | istopxid |                     op_text                     
+-------+----------+-------------------------------------------------
+     1 | t        | CREATE TABLE public.t1(i int4,j int4,k varchar)
+     1 | t        | CREATE TABLE public.t2(i int4,j text,k varchar)
+     1 | t        | TRUNCATE TABLE public.t1
+     1 | t        | ALTER TABLE public.t2 ADD COLUMN m int4
+     1 | t        | ALTER TABLE public.t2_1 DROP COLUMN k
+     1 | t        | ALTER TABLE public.t2 ALTER COLUMN m type int8
+     1 | t        | ALTER TABLE public.t2_1 RENAME COLUMN m TO n
+     1 | t        | ALTER TABLE public.t2 RENAME TO t2_1
+     1 | t        | DROP TABLE public.t1
+(9 rows)
+

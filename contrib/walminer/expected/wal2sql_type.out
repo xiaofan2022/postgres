@@ -1,0 +1,181 @@
+DROP EXTENSION IF EXISTS walminer;
+CREATE EXTENSION IF NOT EXISTS walminer;
+SELECT 1 FROM pg_switch_wal();
+ ?column? 
+----------
+        1
+(1 row)
+
+CREATE TABLE tb_types(
+id int primary key,
+c_bigbit bigint,
+c_bigserial bigserial,
+c_bit10 bit(10),
+c_varbit10 varbit(10),
+c_bool bool,
+c_box box,
+c_bytea bytea,
+c_char char,
+c_char10 char(10),
+c_varchar10 varchar(10),
+c_cidr cidr,
+c_circle circle,
+c_date date,
+c_float8 float8,
+c_inet inet,
+c_int int,
+c_interval interval,
+c_json json,
+c_jsonb jsonb,
+c_line line,
+c_lseg lseg,
+c_macaddr macaddr,
+c_macaddr8 macaddr8,
+c_money money,
+c_numeric10_3 numeric(10,3),
+c_path path,
+c_pg_lsn pg_lsn,
+c_point point,
+c_polygon polygon,
+c_float4 float4,
+c_smallint smallint,
+c_smallserial smallserial,
+c_serial serial,
+c_text text,
+c_time  time,
+c_timetz timetz,
+c_timestamp timestamp,
+c_timestamptz timestamptz,
+c_tsquery tsquery,
+c_tsvector tsvector,
+c_txid_snapshot txid_snapshot,
+c_uuid uuid,
+c_inta int[]
+);
+INSERT INTO tb_types VALUES
+(
+1,
+-1,
+DEFAULT,
+'1000100001',
+'1000100001',
+true,
+'(( 0 , 0 ) , ( 99.9 , 99.9 ))',
+'\x616263',
+'k',
+'abc',
+'abc',
+'192.168.100.128/25',
+'<(0,0),5.1>',
+'2019-12-14',
+'9.99999',
+'192.168.100.128/25',
+NULL,
+'3 4:05:06'::interval,
+'[1, 2, "foo", null]'::json,
+'[1, 2, "foo", null]'::jsonb,
+'{2,1,100}',
+'((0,0),(99.9,99.9))',
+'08:00:2b:01:02:03',
+'08:00:2b:01:02:03:04:05',
+'12.34',
+111.333,
+'((0,0),(10,10),(15.1,1.1))',
+'0/8097378',
+'(1.1,99.9)',
+'((0,0),(10,10),(15.1,15.1),(0,0))',
+99.9,
+1,
+DEFAULT,
+DEFAULT,
+'abc123',
+'00:04:28.237356',
+'00:04:47.28835+08',
+'2019-12-14 00:05:21.820347',
+'2019-12-14 00:05:21.820347+08',
+'fat & cat'::tsquery,
+'a fat cat'::tsvector,
+'673:673:'::txid_snapshot,
+'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::uuid,
+'{1,2,4}'::int[]
+);
+UPDATE tb_types
+SET c_bigbit=2,
+c_bigserial=-2,
+c_bit10='1000100000',
+c_varbit10='1000100000',
+c_bool=false,
+c_box='(( 1 , 1 ) , ( 99.9 , 99.9 ))'::box,
+c_bytea='\x61626364',
+c_char='b',
+c_char10='abcd',
+c_varchar10='abcd',
+c_cidr='192.168.101.128/25',
+c_circle='<(1,1),5.1>',
+c_date='2019-12-15',
+c_float8='9.999991',
+c_inet='192.168.101.128/25',
+c_int=1,
+c_interval='3 4:05:07'::interval,
+c_json='[1, 2, "foo2", null]'::json,
+c_jsonb='[1, 2, "foo2", null]'::jsonb,
+c_line='{2,1,100}'::line,
+c_lseg='((0,0),(99.9,99.9))'::lseg,
+c_macaddr='08:00:2b:01:02:04',
+c_macaddr8='08:00:2b:01:02:03:04:06',
+c_money=NULL,
+c_numeric10_3=111.444,
+c_path='((0,0),(10,10),(15.1,1.1))',
+c_pg_lsn='0/8097370',
+c_point='(2.2,99.9)',
+c_polygon='((1,1),(10,10),(15.1,15.1),(1,1))'::polygon,
+c_float4=99.8::float4,
+c_smallint=2,
+c_smallserial=2,
+c_serial=2,
+c_text='abc1234',
+c_time='00:04:28.237357',
+c_timetz='00:04:47.28835+09'::timetz,
+c_timestamp='2019-12-14 00:05:21.820347'::timestamp,
+c_timestamptz='2019-12-14 00:05:21.820347+09'::timestamptz,
+c_tsquery='fat & dog'::tsquery,
+c_tsvector='a fat dog'::tsvector,
+c_txid_snapshot='674:674:'::txid_snapshot,
+c_uuid='a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12'::uuid,
+c_inta='{1,2,4,5}'::int[]
+WHERE id=1;
+DELETE FROM tb_types;
+SELECT walminer_stop();
+  walminer_stop   
+------------------
+ walminer stoped!
+(1 row)
+
+SELECT pg_walfile_name(pg_current_wal_lsn()) AS walfile_name \gset
+SELECT 'pg_wal/' || :'walfile_name' AS walfile_path \gset
+SELECT walminer_wal_add(:'walfile_path');
+  walminer_wal_add  
+--------------------
+ 1 file add success
+(1 row)
+
+SELECT walminer_regression_mode();
+ walminer_regression_mode 
+--------------------------
+ t
+(1 row)
+
+SELECT wal2sql();
+       wal2sql       
+---------------------
+ pg_minerwal success
+(1 row)
+
+SELECT sqlno, topxid=0 as istopxid, op_text FROM walminer_contents;
+ sqlno | istopxid |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       op_text                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+-------+----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+     1 | t        | INSERT INTO public.tb_types(id ,c_bigbit ,c_bigserial ,c_bit10 ,c_varbit10 ,c_bool ,c_box ,c_bytea ,c_char ,c_char10 ,c_varchar10 ,c_cidr ,c_circle ,c_date ,c_float8 ,c_inet ,c_int ,c_interval ,c_json ,c_jsonb ,c_line ,c_lseg ,c_macaddr ,c_macaddr8 ,c_money ,c_numeric10_3 ,c_path ,c_pg_lsn ,c_point ,c_polygon ,c_float4 ,c_smallint ,c_smallserial ,c_serial ,c_text ,c_time ,c_timetz ,c_timestamp ,c_timestamptz ,c_tsquery ,c_tsvector ,c_txid_snapshot ,c_uuid ,c_inta) VALUES(1 ,-1 ,1 ,B'1000100001' ,B'1000100001' ,true ,'(99.9,99.9),(0,0)' ,'\x616263' ,'k' ,'abc       ' ,'abc' ,'192.168.100.128/25' ,'<(0,0),5.1>' ,'12-14-2019' ,9.99999 ,'192.168.100.128/25' ,null ,'@ 3 days 4 hours 5 mins 6 secs' ,'[1, 2, "foo", null]' ,'[1, 2, "foo", null]' ,'{2,1,100}' ,'[(0,0),(99.9,99.9)]' ,'08:00:2b:01:02:03' ,'08:00:2b:01:02:03:04:05' ,'12.34' ,111.333 ,'((0,0),(10,10),(15.1,1.1))' ,'0/8097378' ,'(1.1,99.9)' ,'((0,0),(10,10),(15.1,15.1),(0,0))' ,99.9 ,1 ,1 ,1 ,'abc123' ,'00:04:28.237356' ,'00:04:47.28835+08' ,'Sat Dec 14 00:05:21.820347 2019' ,'Fri Dec 13 08:05:21.820347 2019 PST' ,'fat & cat' ,'a cat fat' ,'673:673:' ,'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' ,'{1,2,4}')
+     1 | t        | UPDATE public.tb_types SET c_bigbit=2, c_bigserial=-2, c_bit10=B'1000100000', c_varbit10=B'1000100000', c_bool=false, c_box='(99.9,99.9),(1,1)', c_bytea='\x61626364', c_char='b', c_char10='abcd      ', c_varchar10='abcd', c_cidr='192.168.101.128/25', c_circle='<(1,1),5.1>', c_date='12-15-2019', c_float8=9.999991, c_inet='192.168.101.128/25', c_int=1, c_interval='@ 3 days 4 hours 5 mins 7 secs', c_json='[1, 2, "foo2", null]', c_jsonb='[1, 2, "foo2", null]', c_macaddr='08:00:2b:01:02:04', c_macaddr8='08:00:2b:01:02:03:04:06', c_money=null, c_numeric10_3=111.444, c_pg_lsn='0/8097370', c_point='(2.2,99.9)', c_polygon='((1,1),(10,10),(15.1,15.1),(1,1))', c_float4=99.8, c_smallint=2, c_smallserial=2, c_serial=2, c_text='abc1234', c_time='00:04:28.237357', c_timetz='00:04:47.28835+09', c_timestamptz='Fri Dec 13 07:05:21.820347 2019 PST', c_tsquery='fat & dog', c_tsvector='a dog fat', c_txid_snapshot='674:674:', c_uuid='a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', c_inta='{1,2,4,5}' WHERE id=1
+     1 | t        | DELETE FROM public.tb_types WHERE id=1
+(3 rows)
+

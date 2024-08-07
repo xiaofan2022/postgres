@@ -1,0 +1,108 @@
+DROP EXTENSION IF EXISTS walminer;
+CREATE EXTENSION IF NOT EXISTS walminer;
+DROP TABLE t1;
+DROP TABLE t2;
+CREATE TABLE t1(i int, j int, k varchar);
+CREATE TABLE t2(i int, j int, k varchar);
+SELECT 1 FROM pg_switch_wal();
+ ?column? 
+----------
+        1
+(1 row)
+
+INSERT INTO t1 VALUES(0,0, 'front_search');
+SELECT pg_current_wal_lsn() AS lsn0 \gset
+INSERT INTO t1 VALUES(0,0, 'front_search');
+CHECKPOINT;
+INSERT INTO t1 VALUES(1,0, 'front_search');
+SELECT pg_current_wal_lsn() AS lsn1 \gset
+BEGIN;
+INSERT INTO t1 VALUES(1,1, 'front_search');
+INSERT INTO t1 VALUES(2,1, 'front_search');
+COMMIT;
+INSERT INTO t2 VALUES(1,0, 'front_search');
+INSERT INTO t2 VALUES(2,0, 'front_search');
+SELECT pg_current_wal_lsn() AS lsn2 \gset
+SELECT walminer_regression_mode();
+ walminer_regression_mode 
+--------------------------
+ t
+(1 row)
+
+SELECT walminer_stop();
+  walminer_stop   
+------------------
+ walminer stoped!
+(1 row)
+
+SELECT pg_walfile_name(pg_current_wal_lsn()) AS walfile_name \gset
+SELECT 'pg_wal/' || :'walfile_name' AS walfile_path \gset
+SELECT walminer_wal_add(:'walfile_path');
+  walminer_wal_add  
+--------------------
+ 1 file add success
+(1 row)
+
+SELECT wal2sql(:'lsn0'::pg_lsn, :'lsn2'::pg_lsn,'false');
+       wal2sql       
+---------------------
+ pg_minerwal success
+(1 row)
+
+SELECT sqlno, topxid=0 as istopxid, sqlkind, minerd, op_text,complete FROM walminer_contents;
+ sqlno | istopxid | sqlkind | minerd |                           op_text                           | complete 
+-------+----------+---------+--------+-------------------------------------------------------------+----------
+     1 | t        |       1 | t      | INSERT INTO public.t1(i ,j ,k) VALUES(0 ,0 ,'front_search') | f
+     1 | t        |       1 | t      | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,0 ,'front_search') | t
+     1 | t        |       1 | t      | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,1 ,'front_search') | t
+     2 | t        |       1 | t      | INSERT INTO public.t1(i ,j ,k) VALUES(2 ,1 ,'front_search') | t
+     1 | t        |       1 | t      | INSERT INTO public.t2(i ,j ,k) VALUES(1 ,0 ,'front_search') | t
+     1 | t        |       1 | t      | INSERT INTO public.t2(i ,j ,k) VALUES(2 ,0 ,'front_search') | t
+(6 rows)
+
+SELECT walminer_stop();
+  walminer_stop   
+------------------
+ walminer stoped!
+(1 row)
+
+SELECT pg_walfile_name(pg_current_wal_lsn()) AS walfile_name \gset
+SELECT 'pg_wal/' || :'walfile_name' AS walfile_path \gset
+SELECT walminer_wal_add(:'walfile_path');
+  walminer_wal_add  
+--------------------
+ 1 file add success
+(1 row)
+
+SELECT walminer_by_lsn(:'lsn0'::pg_lsn, :'lsn2'::pg_lsn, 'true');
+ERROR:  Fail to search checkpoint in front search mode
+CONTEXT:  SQL function "walminer_by_lsn" statement 2
+SELECT walminer_stop();
+  walminer_stop   
+------------------
+ walminer stoped!
+(1 row)
+
+SELECT pg_walfile_name(pg_current_wal_lsn()) AS walfile_name \gset
+SELECT 'pg_wal/' || :'walfile_name' AS walfile_path \gset
+SELECT walminer_wal_add(:'walfile_path');
+  walminer_wal_add  
+--------------------
+ 1 file add success
+(1 row)
+
+SELECT walminer_by_lsn(:'lsn1'::pg_lsn, :'lsn2'::pg_lsn,'true');
+   walminer_by_lsn   
+---------------------
+ pg_minerwal success
+(1 row)
+
+SELECT sqlno, topxid=0 as istopxid, sqlkind, minerd, op_text,complete FROM walminer_contents;
+ sqlno | istopxid | sqlkind | minerd |                           op_text                           | complete 
+-------+----------+---------+--------+-------------------------------------------------------------+----------
+     1 | t        |       1 | t      | INSERT INTO public.t1(i ,j ,k) VALUES(1 ,1 ,'front_search') | t
+     2 | t        |       1 | t      | INSERT INTO public.t1(i ,j ,k) VALUES(2 ,1 ,'front_search') | t
+     1 | t        |       1 | t      | INSERT INTO public.t2(i ,j ,k) VALUES(1 ,0 ,'front_search') | t
+     1 | t        |       1 | t      | INSERT INTO public.t2(i ,j ,k) VALUES(2 ,0 ,'front_search') | t
+(4 rows)
+
